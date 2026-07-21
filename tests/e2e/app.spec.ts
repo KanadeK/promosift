@@ -21,7 +21,9 @@ test("remains usable at a mobile viewport", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Curate the evidence/i })).toBeVisible();
   await page.locator("#files").setInputFiles("tests/fixtures/clear-1920x1080.png");
   await expect(page.locator(".card")).toHaveCount(1);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
 });
 
 test("reports invalid image content instead of importing it", async ({ page }) => {
@@ -135,6 +137,7 @@ test("keeps the full local workflow private and exports a ZIP", async ({ page },
   await (await projectDownload).saveAs(projectPath);
   await page.locator('[data-action="reset"]').click();
   await page.locator("#project-file").setInputFiles(projectPath);
+  await expect(page.getByRole("alert")).toContainText("Project loaded.");
   await page.locator("#folder").setInputFiles("tests/fixtures/project-recovery");
   const restoredCard = page.locator(".card").filter({ hasText: "clear-1920x1080.png" });
   await expect(restoredCard.getByRole("button", { name: "Keep" })).toHaveAttribute(

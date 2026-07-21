@@ -101,6 +101,10 @@ test("keeps the full local workflow private and exports a ZIP", async ({ page },
   const shortlist = page.locator(".shortlist [data-drag]");
   await shortlist.nth(1).dragTo(shortlist.nth(0));
   await expect(shortlist.nth(0)).toContainText("black-frame.png");
+  const moveDown = shortlist.nth(0).getByRole("button", { name: "Move down" });
+  await moveDown.focus();
+  await page.keyboard.press("Enter");
+  await expect(shortlist.nth(0)).toContainText("clear-1920x1080.png");
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export ZIP" }).click();
   const zipDownload = await download;
@@ -111,7 +115,7 @@ test("keeps the full local workflow private and exports a ZIP", async ({ page },
   expect(Object.keys(zip.files)).toEqual(
     expect.arrayContaining(["selected/", "contact-sheet.png", "selection.json", "report.csv"])
   );
-  expect(await zip.file("selected/02-clear-1920x1080.png")!.async("nodebuffer")).toEqual(
+  expect(await zip.file("selected/01-clear-1920x1080.png")!.async("nodebuffer")).toEqual(
     await readFile("tests/fixtures/clear-1920x1080.png")
   );
   expect(await zip.file("report.csv")!.async("string")).toContain("file_name,width,height");

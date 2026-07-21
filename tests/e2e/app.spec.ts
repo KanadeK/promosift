@@ -56,7 +56,7 @@ test("keeps the full local workflow private and exports a ZIP", async ({ page },
   await (await projectDownload).saveAs(projectPath);
   await page.locator('[data-action="reset"]').click();
   await page.locator("#project-file").setInputFiles(projectPath);
-  await page.locator("#folder").setInputFiles("tests/fixtures");
+  await page.locator("#folder").setInputFiles("tests/fixtures/project-recovery");
   const restoredCard = page.locator(".card").filter({ hasText: "clear-1920x1080.png" });
   await expect(restoredCard.getByRole("button", { name: "Keep" })).toHaveAttribute(
     "aria-pressed",

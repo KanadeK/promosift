@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const out = join(root, "public", "samples");
 const testOut = join(root, "tests", "fixtures");
+const projectFolder = join(testOut, "project-recovery");
 type Kind = "clear" | "blur" | "dark" | "bright" | "low" | "black" | "white" | "pixel" | "night";
 const manifest: [string, number, number, Kind][] = [
   ["clear-1920x1080.png", 1920, 1080, "clear"],
@@ -110,6 +111,7 @@ function png(width: number, height: number, kind: Kind, tweak = 0): Buffer {
 }
 await mkdir(out, { recursive: true });
 await mkdir(testOut, { recursive: true });
+await mkdir(projectFolder, { recursive: true });
 for (const [name, width, height, kind] of manifest) {
   const target = join(out, name);
   const source = name === "exact-duplicate-b.png" ? join(out, "exact-duplicate-a.png") : null;
@@ -129,4 +131,6 @@ for (const name of [
   "near-duplicate-b.png"
 ])
   await copyFile(join(out, name), join(testOut, name));
+for (const name of ["clear-1920x1080.png", "black-frame.png"])
+  await copyFile(join(out, name), join(projectFolder, name));
 console.log(`Generated ${manifest.length} original synthetic image fixtures.`);

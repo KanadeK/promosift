@@ -46,6 +46,8 @@ export class PromoSiftApp {
   private language: Language = "en";
   private filter = "all";
   private target = 8;
+  private renameExports = true;
+  private contactColumns = 3;
   private worker = new Worker(new URL("../workers/analyzer.worker.ts", import.meta.url), {
     type: "module"
   });
@@ -103,6 +105,18 @@ export class PromoSiftApp {
           "afterbegin",
           `<fieldset class="custom-preset"><legend>Custom requirements</legend>${(["targetWidth", "targetHeight", "minimumWidth", "minimumHeight", "aspectTolerance"] as const).map((field) => `<label>${field} <input data-custom="${field}" type="number" min="0" step="0.001" value="${this.preset[field]}"/></label>`).join("")}</fieldset>`
         );
+    this.root
+      .querySelector(".toolbar")!
+      .insertAdjacentHTML(
+        "beforeend",
+        `<label>ZIP names <select id="zip-names"><option value="ordered" ${this.renameExports ? "selected" : ""}>Rename in shortlist order</option><option value="original" ${this.renameExports ? "" : "selected"}>Keep original names</option></select></label><label>Contact Sheet <select id="contact-columns">${[2, 3, 4].map((columns) => `<option value="${columns}" ${columns === this.contactColumns ? "selected" : ""}>${columns} columns</option>`).join("")}</select></label>`
+      );
+    this.root
+      .querySelector(".lower .panel:last-child")!
+      .insertAdjacentHTML(
+        "beforeend",
+        '<button data-action="fullscreen" class="secondary">Fullscreen shortlist</button>'
+      );
     this.bind();
   }
 
@@ -161,6 +175,12 @@ export class PromoSiftApp {
     this.root.querySelector<HTMLSelectElement>("#target")!.onchange = (e) => {
       this.target = Number((e.target as HTMLSelectElement).value);
       this.render();
+    };
+    this.root.querySelector<HTMLSelectElement>("#zip-names")!.onchange = (e) => {
+      this.renameExports = (e.target as HTMLSelectElement).value === "ordered";
+    };
+    this.root.querySelector<HTMLSelectElement>("#contact-columns")!.onchange = (e) => {
+      this.contactColumns = Number((e.target as HTMLSelectElement).value);
     };
     this.root
       .querySelectorAll<HTMLElement>("[data-action]")
@@ -230,7 +250,12 @@ export class PromoSiftApp {
     else if (action === "detail" && id) this.showDetail(id);
     else if (action === "export") await this.downloadZip();
     else if (action === "contact")
-      this.download(await createContactSheet(this.shortlist), "contact-sheet.png");
+      this.download(
+        await createContactSheet(this.shortlist, this.contactColumns),
+        "contact-sheet.png"
+      );
+    else if (action === "fullscreen")
+      await this.root.querySelector<HTMLElement>(".shortlist")?.requestFullscreen();
     else if (action === "csv")
       this.download(
         new Blob([buildCsv(this.images)], { type: "text/csv" }),
@@ -404,7 +429,10 @@ export class PromoSiftApp {
   }
   private async downloadZip(): Promise<void> {
     try {
-      this.download(await createSelectionZip(this.images, true, 3), "promosift-selection.zip");
+      this.download(
+        await createSelectionZip(this.images, this.renameExports, this.contactColumns),
+        "promosift-selection.zip"
+      );
     } catch (error) {
       this.errors.push(error instanceof Error ? error.message : "Could not export ZIP.");
       this.render();

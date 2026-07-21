@@ -9,6 +9,7 @@ jobs:
         with: { node-version: 24, cache: npm }
       - run: npm ci
       - run: npm run fixtures
+      - run: npm run fixtures:performance
       - run: npm run lint
       - run: npm run format:check
       - run: npm run typecheck

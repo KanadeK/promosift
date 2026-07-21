@@ -7,6 +7,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const out = join(root, "public", "samples");
 const testOut = join(root, "tests", "fixtures");
 const projectFolder = join(testOut, "project-recovery");
+const performanceOut = join(testOut, "performance");
 const formatSmokeJpeg = Buffer.from(
   "/9j/4AAQSkZJRgABAgAAAQABAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABLAAEBAAAAAAAAAAAAAAAAAAAAAwEBAAAAAAAAAAAAAAAAAAAABhABAAAAAAAAAAAAAAAAAAAAABEBAAAAAAAAAAAAAAAAAAAAAP/AABEIAAkAEAMBIgACEQADEQD/2gAMAwEAAhEDEQA/AKgGgo//2Q==",
   "base64"
@@ -145,4 +146,30 @@ for (const name of ["format-smoke.jpg", "format-smoke.webp"])
   await copyFile(join(out, name), join(testOut, name));
 for (const name of ["clear-1920x1080.png", "black-frame.png"])
   await copyFile(join(out, name), join(projectFolder, name));
+if (process.argv.includes("--performance")) {
+  await mkdir(performanceOut, { recursive: true });
+  for (let index = 0; index < 300; index += 1) {
+    const pair = Math.floor(index / 2);
+    const kind: Kind =
+      index < 100 ? "night" : index < 120 ? "blur" : index < 140 ? "dark" : "clear";
+    const isWrongRatio = index >= 140 && index < 160;
+    const width = isWrongRatio ? 1600 : 1920;
+    const height = isWrongRatio ? 1200 : 1080;
+    const category =
+      index < 100
+        ? `near-${String(pair).padStart(2, "0")}`
+        : index < 120
+          ? "blur"
+          : index < 140
+            ? "dark"
+            : isWrongRatio
+              ? "wrong-ratio"
+              : "clear";
+    await writeFile(
+      join(performanceOut, `performance-${category}-${String(index).padStart(3, "0")}.png`),
+      png(width, height, kind, index < 100 ? pair * 4 + (index % 2) : index)
+    );
+  }
+  console.log("Generated 300 synthetic performance fixtures with 50 near-duplicate pairs.");
+}
 console.log(`Generated ${manifest.length} original synthetic image fixtures.`);

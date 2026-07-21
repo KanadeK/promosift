@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import JSZip from "jszip";
 
 test("imports PNG, JPEG, and WebP locally", async ({ page }) => {
@@ -34,6 +34,20 @@ test("shows visual duplicate groups and keeps only the chosen candidate", async 
   await expect(group).toContainText(/VISUAL_(NEAR_DUPLICATE|SIMILAR)/);
   await group.getByRole("button").first().click();
   await expect(page.getByText(/Shortlist board/)).toContainText("1/");
+});
+
+test("cancels a queued analysis batch without finishing every image", async ({ page }) => {
+  const files = (await readdir("tests/fixtures/performance"))
+    .slice(0, 100)
+    .map((file) => `tests/fixtures/performance/${file}`);
+  await page.goto("/");
+  await page.locator("#files").setInputFiles(files);
+  const cancel = page.getByRole("button", { name: "Cancel analysis" });
+  await expect(cancel).toBeEnabled();
+  await cancel.dispatchEvent("click");
+  await expect(cancel).toBeDisabled();
+  await page.waitForTimeout(500);
+  await expect(page.locator(".stats")).not.toContainText("100/100");
 });
 
 test("keeps the full local workflow private and exports a ZIP", async ({ page }, testInfo) => {

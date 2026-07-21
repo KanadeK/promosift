@@ -89,6 +89,8 @@ npm run check
 npm run test:e2e
 ```
 
+Generate and run the optional large-batch smoke fixture locally with `npm run fixtures:performance`. It creates 300 synthetic files (including 50 near-duplicate pairs, blur, dark, and wrong-ratio cases) under an ignored test directory, so the repository never ships a large binary benchmark pack.
+
 ## Roadmap
 
 - Import custom screenshot requirement presets.

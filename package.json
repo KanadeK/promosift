@@ -16,6 +16,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "fixtures": "tsx scripts/generate-fixtures.ts",
+    "fixtures:performance": "tsx scripts/generate-fixtures.ts --performance",
     "capture:demo": "tsx scripts/capture-demo.ts",
     "verify:build": "tsx scripts/verify-build.ts",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build && npm run verify:build"

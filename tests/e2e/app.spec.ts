@@ -17,6 +17,10 @@ test("keeps the full local workflow private and exports a ZIP", async ({ page })
     ]);
   await expect(page.locator(".stats")).toContainText("2");
   await expect(page.locator(".stats")).toContainText("2/2");
+  await page.selectOption("#target", "custom");
+  await page.locator("#custom-target").fill("7");
+  await page.locator("#custom-target").press("Tab");
+  await expect(page.getByText(/Shortlist board/)).toContainText("0/7");
   await page.locator(".image-button").first().click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByText("Technical signals")).toBeVisible();

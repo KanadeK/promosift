@@ -46,6 +46,7 @@ export class PromoSiftApp {
   private language: Language = "en";
   private filter = "all";
   private target = 8;
+  private customTarget = false;
   private renameExports = true;
   private contactColumns = 3;
   private worker = new Worker(new URL("../workers/analyzer.worker.ts", import.meta.url), {
@@ -119,6 +120,16 @@ export class PromoSiftApp {
         "beforeend",
         '<button data-action="fullscreen" class="secondary">Fullscreen shortlist</button>'
       );
+    const targetSelect = this.root.querySelector<HTMLSelectElement>("#target")!;
+    targetSelect.insertAdjacentHTML(
+      "beforeend",
+      `<option value="custom" ${this.customTarget ? "selected" : ""}>Custom…</option>`
+    );
+    if (this.customTarget)
+      targetSelect.parentElement!.insertAdjacentHTML(
+        "afterend",
+        `<label>Custom target <input id="custom-target" type="number" min="1" max="500" value="${this.target}"/></label>`
+      );
     const detail = this.detailId
       ? this.images.find((image) => image.id === this.detailId)
       : undefined;
@@ -187,9 +198,17 @@ export class PromoSiftApp {
       this.render();
     };
     this.root.querySelector<HTMLSelectElement>("#target")!.onchange = (e) => {
-      this.target = Number((e.target as HTMLSelectElement).value);
+      const value = (e.target as HTMLSelectElement).value;
+      this.customTarget = value === "custom";
+      if (!this.customTarget) this.target = Number(value);
       this.render();
     };
+    const customTarget = this.root.querySelector<HTMLInputElement>("#custom-target");
+    if (customTarget)
+      customTarget.onchange = () => {
+        this.target = Math.max(1, Math.min(LIMITS.count, Number(customTarget.value) || 1));
+        this.render();
+      };
     this.root.querySelector<HTMLSelectElement>("#zip-names")!.onchange = (e) => {
       this.renameExports = (e.target as HTMLSelectElement).value === "ordered";
     };

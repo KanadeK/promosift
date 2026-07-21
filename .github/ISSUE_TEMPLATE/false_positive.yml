@@ -1,0 +1,6 @@
+name: False positive
+description: Report an inaccurate technical review suggestion
+body:
+  - type: textarea
+    attributes: { label: Signal and expected behavior }
+    validations: { required: true }

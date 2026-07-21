@@ -1,0 +1,40 @@
+{
+  "name": "promosift",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Turn a messy folder of gameplay captures into a clean, diverse, store-ready screenshot set — entirely in your browser.",
+  "scripts": {
+    "dev": "vite",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run tests/unit tests/integration",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "build": "vite build",
+    "preview": "vite preview",
+    "fixtures": "tsx scripts/generate-fixtures.ts",
+    "capture:demo": "tsx scripts/capture-demo.ts",
+    "verify:build": "tsx scripts/verify-build.ts",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build && npm run verify:build"
+  },
+  "dependencies": {
+    "jszip": "3.10.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.0",
+    "@types/node": "24.0.15",
+    "@vitest/coverage-v8": "3.2.4",
+    "eslint": "9.31.0",
+    "@eslint/js": "9.31.0",
+    "globals": "16.3.0",
+    "prettier": "3.6.2",
+    "tsx": "4.20.3",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.37.0",
+    "vite": "7.0.6",
+    "vitest": "3.2.4"
+  }
+}

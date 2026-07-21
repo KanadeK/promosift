@@ -1,0 +1,13 @@
+import { chromium } from "playwright";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+const root = fileURLToPath(new URL("..", import.meta.url));
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+await page.goto("http://127.0.0.1:4173/promosift/", { waitUntil: "networkidle" });
+await page.getByRole("button", { name: "Load sample pack" }).click();
+await page.waitForTimeout(1500);
+await mkdir(join(root, "docs", "screenshots"), { recursive: true });
+await page.screenshot({ path: join(root, "docs", "screenshots", "gallery.png"), fullPage: true });
+await browser.close();

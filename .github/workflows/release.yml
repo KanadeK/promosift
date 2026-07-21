@@ -1,0 +1,29 @@
+name: Release
+on: { push: { tags: ["v*"] } }
+permissions: { contents: write }
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npm run fixtures
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm run build
+      - run: cd dist && zip -r ../promosift-${{ github.ref_name }}-static.zip .
+      - run: cd public/samples && zip -r ../../promosift-${{ github.ref_name }}-sample-pack.zip .
+      - run: cp promosift-${{ github.ref_name }}-sample-pack.zip promosift-${{ github.ref_name }}-example-export.zip
+      - run: sha256sum promosift-${{ github.ref_name }}-*.zip > checksums-sha256.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: PromoSift ${{ github.ref_name }} — Curate Better Game Screenshots
+          generate_release_notes: true
+          files: |
+            promosift-${{ github.ref_name }}-static.zip
+            promosift-${{ github.ref_name }}-sample-pack.zip
+            promosift-${{ github.ref_name }}-example-export.zip
+            checksums-sha256.txt

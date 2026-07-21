@@ -9,7 +9,7 @@ test("loads samples, filters, shortlists, switches language and resets", async (
       "tests/fixtures/black-frame.png",
       "tests/fixtures/exact-duplicate-a.png"
     ]);
-  await expect(page.getByText(/images/).first()).toContainText("3");
+  await expect(page.locator(".stats")).toContainText("2");
   await page.getByRole("button", { name: "Keep" }).first().click();
   await expect(page.getByText(/Shortlist board/)).toContainText("1/");
   await page.getByRole("button", { name: "中文" }).click();

@@ -4,6 +4,8 @@
 
 [![CI](https://github.com/KanadeK/promosift/actions/workflows/ci.yml/badge.svg)](https://github.com/KanadeK/promosift/actions/workflows/ci.yml) [![Pages](https://img.shields.io/github/deployments/KanadeK/promosift/github-pages?label=pages)](https://kanadek.github.io/promosift/) [![Release](https://img.shields.io/github/v/release/KanadeK/promosift)](https://github.com/KanadeK/promosift/releases) [![License](https://img.shields.io/github/license/KanadeK/promosift)](LICENSE) · [中文](README.zh-CN.md)
 
+![PromoSift workflow](docs/demo.gif)
+
 ![PromoSift gallery](docs/screenshots/gallery.png)
 
 ## Why

@@ -1,0 +1,11 @@
+file 'screenshots/gallery.png'
+duration 2
+file 'screenshots/quality-filter.png'
+duration 2
+file 'screenshots/duplicate-group.png'
+duration 2
+file 'screenshots/shortlist.png'
+duration 2
+file 'screenshots/contact-sheet.png'
+duration 2
+file 'screenshots/contact-sheet.png'

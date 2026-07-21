@@ -16,7 +16,7 @@ jobs:
       - run: npm run build
       - run: cd dist && zip -r ../promosift-${{ github.ref_name }}-static.zip .
       - run: cd public/samples && zip -r ../../promosift-${{ github.ref_name }}-sample-pack.zip .
-      - run: cp promosift-${{ github.ref_name }}-sample-pack.zip promosift-${{ github.ref_name }}-example-export.zip
+      - run: cp test-results/app-keeps-the-full-local-workflow-private-and-exports-a-ZIP/promosift-selection.zip promosift-${{ github.ref_name }}-example-export.zip
       - run: sha256sum promosift-${{ github.ref_name }}-*.zip > checksums-sha256.txt
       - uses: softprops/action-gh-release@v2
         with:

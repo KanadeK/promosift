@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("keeps the full local workflow private and exports a ZIP", async ({ page }) => {
+test("keeps the full local workflow private and exports a ZIP", async ({ page }, testInfo) => {
   const externalRequests: string[] = [];
   page.on("request", (request) => {
     const url = new URL(request.url());
@@ -36,6 +36,18 @@ test("keeps the full local workflow private and exports a ZIP", async ({ page })
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export ZIP" }).click();
   expect((await download).suggestedFilename()).toBe("promosift-selection.zip");
+  const projectDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export project JSON" }).click();
+  const projectPath = testInfo.outputPath("promosift-project.json");
+  await (await projectDownload).saveAs(projectPath);
+  await page.locator('[data-action="reset"]').click();
+  await page.locator("#project-file").setInputFiles(projectPath);
+  await page.locator("#folder").setInputFiles("tests/fixtures");
+  const restoredCard = page.locator(".card").filter({ hasText: "clear-1920x1080.png" });
+  await expect(restoredCard.getByRole("button", { name: "Keep" })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
   await page.getByRole("button", { name: "中文" }).click();
   await expect(page.getByText("本地")).toBeVisible();
   await expect(page.getByRole("button", { name: "保留" }).first()).toBeVisible();

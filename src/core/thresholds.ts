@@ -13,3 +13,5 @@ export const THRESHOLDS = {
   similarHamming: 16,
   diversityDistance: 0.22
 } as const;
+
+export type ThresholdConfig = { -readonly [Key in keyof typeof THRESHOLDS]: number };

@@ -1,8 +1,13 @@
-import { THRESHOLDS } from "./thresholds";
+import { THRESHOLDS, type ThresholdConfig } from "./thresholds";
 import { dHash } from "./perceptual-hash";
 import type { Metrics, QualityFlag } from "./types";
 
-export function measurePixels(data: Uint8ClampedArray, width: number, height: number): Metrics {
+export function measurePixels(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  thresholds: ThresholdConfig = THRESHOLDS
+): Metrics {
   const count = width * height;
   const lum = new Uint8ClampedArray(count);
   const histogram = Array<number>(64).fill(0);
@@ -51,15 +56,6 @@ export function measurePixels(data: Uint8ClampedArray, width: number, height: nu
       laplaceN += 1;
     }
   const blurScore = laplaceN ? laplaceSq / laplaceN - (laplaceSum / laplaceN) ** 2 : 0;
-  const flags: QualityFlag[] = [];
-  if (blurScore < THRESHOLDS.blur) flags.push("SUSPECTED_BLUR");
-  if (brightnessMean < THRESHOLDS.darkMean) flags.push("TOO_DARK");
-  if (brightnessMean > THRESHOLDS.brightMean) flags.push("TOO_BRIGHT");
-  if (dark / count > THRESHOLDS.clipping) flags.push("SHADOW_CLIPPING");
-  if (bright / count > THRESHOLDS.clipping) flags.push("HIGHLIGHT_CLIPPING");
-  if (brightnessStdDev < THRESHOLDS.lowContrast) flags.push("LOW_CONTRAST");
-  if (colorVariation < THRESHOLDS.nearBlankVariation) flags.push("NEAR_BLANK");
-  else if (colorVariation < THRESHOLDS.lowColorVariation) flags.push("LOW_COLOR_VARIATION");
   return {
     brightnessMean,
     brightnessStdDev,
@@ -70,8 +66,42 @@ export function measurePixels(data: Uint8ClampedArray, width: number, height: nu
     colorVariation,
     histogram: histogram.map((v) => v / count),
     dHash: dHash(resizeLuminance(lum, width, height), 9, 8),
-    qualityFlags: flags
+    qualityFlags: qualityFlagsFromMetrics(
+      {
+        blurScore,
+        brightnessMean,
+        darkPixelRatio: dark / count,
+        brightPixelRatio: bright / count,
+        brightnessStdDev,
+        colorVariation
+      },
+      thresholds
+    )
   };
+}
+
+export function qualityFlagsFromMetrics(
+  metrics: Pick<
+    Metrics,
+    | "blurScore"
+    | "brightnessMean"
+    | "darkPixelRatio"
+    | "brightPixelRatio"
+    | "brightnessStdDev"
+    | "colorVariation"
+  >,
+  thresholds: ThresholdConfig = THRESHOLDS
+): QualityFlag[] {
+  const flags: QualityFlag[] = [];
+  if (metrics.blurScore < thresholds.blur) flags.push("SUSPECTED_BLUR");
+  if (metrics.brightnessMean < thresholds.darkMean) flags.push("TOO_DARK");
+  if (metrics.brightnessMean > thresholds.brightMean) flags.push("TOO_BRIGHT");
+  if (metrics.darkPixelRatio > thresholds.clipping) flags.push("SHADOW_CLIPPING");
+  if (metrics.brightPixelRatio > thresholds.clipping) flags.push("HIGHLIGHT_CLIPPING");
+  if (metrics.brightnessStdDev < thresholds.lowContrast) flags.push("LOW_CONTRAST");
+  if (metrics.colorVariation < thresholds.nearBlankVariation) flags.push("NEAR_BLANK");
+  else if (metrics.colorVariation < thresholds.lowColorVariation) flags.push("LOW_COLOR_VARIATION");
+  return flags;
 }
 
 function resizeLuminance(

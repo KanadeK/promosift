@@ -54,6 +54,11 @@ test("keeps the full local workflow private and exports a ZIP", async ({ page },
   await expect(page.locator(".stats")).toContainText("2");
   await expect(page.locator(".stats")).toContainText("2/2");
   await expect(page.getByRole("alert")).toContainText("exact-duplicate-a.png: already imported.");
+  const blackCard = page.locator(".card").filter({ hasText: "black-frame.png" });
+  await expect(blackCard).toContainText("TOO_DARK");
+  await page.locator('[data-threshold="darkMean"]').fill("0");
+  await page.locator('[data-threshold="darkMean"]').press("Tab");
+  await expect(blackCard).not.toContainText("TOO_DARK");
   await page.selectOption("#target", "custom");
   await page.locator("#custom-target").fill("7");
   await page.locator("#custom-target").press("Tab");

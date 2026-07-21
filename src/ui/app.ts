@@ -2,6 +2,8 @@ import { applyAnalysis } from "../core/analyzer";
 import { averageDiversity, suggestShortlist } from "../core/diversity";
 import { LIMITS, validateAndCreate } from "../core/image-loader";
 import { evaluatePreset, PRESETS } from "../core/presets";
+import { qualityFlagsFromMetrics } from "../core/quality-metrics";
+import { THRESHOLDS, type ThresholdConfig } from "../core/thresholds";
 import type { ImportSource, Preset, Screenshot, WorkerOutput } from "../core/types";
 import { buildCsv } from "../export/csv-exporter";
 import { createContactSheet } from "../export/contact-sheet";
@@ -49,6 +51,7 @@ export class PromoSiftApp {
   private customTarget = false;
   private renameExports = true;
   private contactColumns = 3;
+  private thresholds: ThresholdConfig = { ...THRESHOLDS };
   private worker = new Worker(new URL("../workers/analyzer.worker.ts", import.meta.url), {
     type: "module"
   });
@@ -113,6 +116,12 @@ export class PromoSiftApp {
       .insertAdjacentHTML(
         "beforeend",
         `<label>ZIP names <select id="zip-names"><option value="ordered" ${this.renameExports ? "selected" : ""}>Rename in shortlist order</option><option value="original" ${this.renameExports ? "" : "selected"}>Keep original names</option></select></label><label>Contact Sheet <select id="contact-columns">${[2, 3, 4].map((columns) => `<option value="${columns}" ${columns === this.contactColumns ? "selected" : ""}>${columns} columns</option>`).join("")}</select></label>`
+      );
+    this.root
+      .querySelector(".toolbar")!
+      .insertAdjacentHTML(
+        "beforeend",
+        `<fieldset class="custom-preset"><legend>Technical review thresholds</legend>${(["blur", "darkMean", "brightMean", "clipping", "lowContrast", "nearBlankVariation", "lowColorVariation"] as const).map((field) => `<label>${field} <input data-threshold="${field}" type="number" min="0" step="0.01" value="${this.thresholds[field]}"/></label>`).join("")}</fieldset>`
       );
     this.root
       .querySelector(".lower .panel:last-child")!
@@ -286,6 +295,21 @@ export class PromoSiftApp {
         this.move(item.dataset.drag!, e.dataTransfer?.getData("text/plain") ?? "");
       };
     });
+    this.root.querySelectorAll<HTMLInputElement>("[data-threshold]").forEach((input) => {
+      input.onchange = () => {
+        const field = input.dataset.threshold as keyof ThresholdConfig;
+        const value = Number(input.value);
+        this.thresholds[field] = Number.isFinite(value) && value >= 0 ? value : THRESHOLDS[field];
+        this.images = this.images.map((image) => ({
+          ...image,
+          qualityFlags:
+            image.analysisStatus === "done"
+              ? qualityFlagsFromMetrics(image, this.thresholds)
+              : image.qualityFlags
+        }));
+        this.render();
+      };
+    });
   }
   private async action(element: HTMLElement): Promise<void> {
     const action = element.dataset.action!,
@@ -454,7 +478,7 @@ export class PromoSiftApp {
     message?: string;
   }): void {
     if (message.ok && message.result)
-      this.images = applyAnalysis(this.images, message.result, this.preset);
+      this.images = applyAnalysis(this.images, message.result, this.preset, this.thresholds);
     else if (message.id) {
       const image = this.images.find((i) => i.id === message.id);
       if (image) image.analysisStatus = "error";

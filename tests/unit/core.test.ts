@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { evaluatePreset, PRESETS } from "../../src/core/presets";
 import { dHash, hammingDistance } from "../../src/core/perceptual-hash";
-import { measurePixels } from "../../src/core/quality-metrics";
+import { measurePixels, qualityFlagsFromMetrics } from "../../src/core/quality-metrics";
+import { THRESHOLDS } from "../../src/core/thresholds";
 import { histogramDistance } from "../../src/core/diversity";
 import { csvEscape } from "../../src/export/csv-exporter";
 import { safeName } from "../../src/export/zip-exporter";
@@ -39,6 +40,21 @@ describe("technical analysis primitives", () => {
     const metrics = measurePixels(pixels, 4, 4);
     expect(metrics.qualityFlags).toContain("NEAR_BLANK");
     expect(metrics.qualityFlags).toContain("TOO_DARK");
+  });
+  it("re-evaluates technical review flags with user thresholds", () => {
+    expect(
+      qualityFlagsFromMetrics(
+        {
+          blurScore: 20,
+          brightnessMean: 30,
+          darkPixelRatio: 0.7,
+          brightPixelRatio: 0,
+          brightnessStdDev: 10,
+          colorVariation: 30
+        },
+        { ...THRESHOLDS, blur: 10, darkMean: 20, clipping: 0.8, lowContrast: 5 }
+      )
+    ).toEqual([]);
   });
   it("calculates symmetric histogram distance", () => {
     expect(histogramDistance([1, 0], [0, 1])).toBeCloseTo(Math.sqrt(2));

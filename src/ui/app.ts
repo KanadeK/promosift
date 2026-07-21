@@ -135,7 +135,52 @@ export class PromoSiftApp {
       : undefined;
     if (detail)
       this.root.querySelector("main")!.insertAdjacentHTML("beforeend", this.detailHtml(detail));
+    this.applyLanguage();
     this.bind();
+  }
+
+  private applyLanguage(): void {
+    if (this.language !== "zh") return;
+    const phrases: Record<string, string> = {
+      "Import screenshots": "导入截图",
+      "Choose files": "选择文件",
+      "Choose folder": "选择文件夹",
+      "Load sample pack": "加载示例素材",
+      "Import project": "导入项目",
+      "Cancel analysis": "取消分析",
+      "Suggested shortlist": "建议短名单",
+      "Export ZIP": "导出 ZIP",
+      "Duplicate groups": "重复分组",
+      "Shortlist board": "短名单看板",
+      "Download contact sheet": "下载联系表",
+      "Download report CSV": "下载 CSV 报告",
+      "Export project JSON": "导出项目 JSON",
+      "Fullscreen shortlist": "全屏短名单",
+      Keep: "保留",
+      Maybe: "待定",
+      Reject: "排除",
+      Remove: "移除",
+      Close: "关闭",
+      Theme: "主题",
+      Reset: "重置",
+      All: "全部",
+      "Review suggested": "建议复核",
+      Duplicates: "重复项",
+      "Custom…": "自定义…",
+      "Rename in shortlist order": "按短名单顺序重命名",
+      "Keep original names": "保留原文件名",
+      "2 columns": "2 列",
+      "3 columns": "3 列",
+      "4 columns": "4 列"
+    };
+    this.root.querySelectorAll<HTMLElement>("button,h2,h3,p,span,small").forEach((element) => {
+      if (!element.children.length && phrases[element.textContent?.trim() ?? ""])
+        element.textContent = phrases[element.textContent!.trim()];
+    });
+    this.root.querySelectorAll<HTMLOptionElement>("option").forEach((option) => {
+      if (phrases[option.textContent?.trim() ?? ""])
+        option.textContent = phrases[option.textContent!.trim()];
+    });
   }
 
   private card(image: Screenshot): string {

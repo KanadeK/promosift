@@ -38,13 +38,14 @@ test("keeps the full local workflow private and exports a ZIP", async ({ page })
   expect((await download).suggestedFilename()).toBe("promosift-selection.zip");
   await page.getByRole("button", { name: "中文" }).click();
   await expect(page.getByText("本地")).toBeVisible();
-  await page.getByRole("button", { name: "Theme" }).click();
+  await expect(page.getByRole("button", { name: "保留" }).first()).toBeVisible();
+  await page.locator('[data-action="theme"]').click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.getByRole("button", { name: "Theme" }).click();
+  await page.locator('[data-action="theme"]').click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.getByRole("button", { name: "Theme" }).click();
+  await page.locator('[data-action="theme"]').click();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme");
-  await page.getByRole("button", { name: "Reset" }).click();
+  await page.locator('[data-action="reset"]').click();
   await expect(page.getByText(/Import a local folder/)).toBeVisible();
   expect(externalRequests).toEqual([]);
 });

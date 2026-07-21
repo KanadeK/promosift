@@ -22,7 +22,21 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           name: PromoSift ${{ github.ref_name }} — Curate Better Game Screenshots
-          generate_release_notes: true
+          body: |
+            ## Highlights
+
+            - Local PNG, JPEG, and WebP screenshot import.
+            - Steam resolution validation, blur-like and exposure review suggestions.
+            - SHA-256 exact-file detection and dHash duplicate clustering.
+            - Visual diversity hints and a manual draggable shortlist board.
+            - Original-byte local ZIP export with Contact Sheet, CSV, and project JSON.
+            - English and Simplified Chinese UI, with GitHub Pages live demo.
+
+            ## Known limitations
+
+            Technical signals are explainable heuristics, not aesthetic judgments. Pixel art,
+            dark scenes, minimal compositions, crops, and overlays can produce false positives
+            or negatives. Review every final selection manually before publishing.
           files: |
             promosift-${{ github.ref_name }}-static.zip
             promosift-${{ github.ref_name }}-sample-pack.zip

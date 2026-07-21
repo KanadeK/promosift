@@ -15,6 +15,15 @@ test("imports PNG, JPEG, and WebP locally", async ({ page }) => {
   await expect(page.locator(".stats")).toContainText("3/3");
 });
 
+test("remains usable at a mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 700 });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: /Curate the evidence/i })).toBeVisible();
+  await page.locator("#files").setInputFiles("tests/fixtures/clear-1920x1080.png");
+  await expect(page.locator(".card")).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test("reports invalid image content instead of importing it", async ({ page }) => {
   await page.goto("/");
   await page.locator("#files").setInputFiles("public/samples/extension-mismatch.jpg");

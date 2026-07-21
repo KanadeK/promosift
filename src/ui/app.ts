@@ -218,8 +218,10 @@ export class PromoSiftApp {
       this.language = this.language === "en" ? "zh" : "en";
       this.render();
     } else if (action === "theme") {
-      document.documentElement.dataset.theme =
-        document.documentElement.dataset.theme === "light" ? "dark" : "light";
+      const current = document.documentElement.dataset.theme ?? "system";
+      const next = current === "system" ? "light" : current === "light" ? "dark" : "system";
+      if (next === "system") delete document.documentElement.dataset.theme;
+      else document.documentElement.dataset.theme = next;
     } else if (action === "reset") this.reset();
     else if (action === "cancel") {
       this.cancelled = true;

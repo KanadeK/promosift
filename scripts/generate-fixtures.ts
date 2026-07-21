@@ -26,7 +26,13 @@ const manifest: [string, number, number, Kind][] = [
   ["pixel-art.png", 1920, 1080, "pixel"],
   ["night-scene.png", 1920, 1080, "night"],
   ["中文 截图.png", 1920, 1080, "clear"],
-  ["space name.png", 1920, 1080, "clear"]
+  ["space name.png", 1920, 1080, "clear"],
+  [
+    "this-is-an-intentionally-long-synthetic-promosift-fixture-name-for-testing-export-sanitization-and-browser-file-handling-without-any-commercial-game-assets.png",
+    1920,
+    1080,
+    "clear"
+  ]
 ];
 function crc32(data: Uint8Array): number {
   let crc = 0xffffffff;

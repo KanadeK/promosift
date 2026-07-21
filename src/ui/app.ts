@@ -54,6 +54,8 @@ export class PromoSiftApp {
   private queue: string[] = [];
   private cancelled = false;
   private errors: string[] = [];
+  private detailId?: string;
+  private detailZoom = 1;
   private pendingProject?: {
     preset?: Preset;
     images: Array<{
@@ -117,6 +119,11 @@ export class PromoSiftApp {
         "beforeend",
         '<button data-action="fullscreen" class="secondary">Fullscreen shortlist</button>'
       );
+    const detail = this.detailId
+      ? this.images.find((image) => image.id === this.detailId)
+      : undefined;
+    if (detail)
+      this.root.querySelector("main")!.insertAdjacentHTML("beforeend", this.detailHtml(detail));
     this.bind();
   }
 
@@ -126,6 +133,13 @@ export class PromoSiftApp {
         ? `${image.width}×${image.height} · ${formatBytes(image.sizeBytes)}`
         : image.analysisStatus;
     return `<article class="card"><button class="image-button" data-action="detail" data-id="${image.id}"><img src="${image.objectUrl}" alt="Preview of ${escapeHtml(image.fileName)}"/></button><div class="card-info"><strong>${escapeHtml(image.fileName)}</strong><small>${status} · ${image.specStatus ?? "pending"}</small><div class="flags">${image.qualityFlags.map((flag) => `<span>${flag}</span>`).join("")}${image.duplicateGroupId ? `<span>${image.duplicateKind}</span>` : ""}</div><div class="choices"><button data-action="status" data-id="${image.id}" data-status="keep" aria-pressed="${image.selectionStatus === "keep"}">Keep</button><button data-action="status" data-id="${image.id}" data-status="maybe" aria-pressed="${image.selectionStatus === "maybe"}">Maybe</button><button data-action="status" data-id="${image.id}" data-status="reject" aria-pressed="${image.selectionStatus === "reject"}">Reject</button></div></div></article>`;
+  }
+  private detailHtml(image: Screenshot): string {
+    const related = this.images.filter(
+      (candidate) =>
+        candidate.duplicateGroupId && candidate.duplicateGroupId === image.duplicateGroupId
+    );
+    return `<section class="detail-backdrop"><article class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detail-title"><header><div><p class="eyebrow">IMAGE DETAIL</p><h2 id="detail-title">${escapeHtml(image.fileName)}</h2></div><button data-action="detail-close" aria-label="Close image detail">Close</button></header><div class="detail-grid"><div class="detail-preview"><img style="transform:scale(${this.detailZoom})" src="${image.objectUrl}" alt="Full preview of ${escapeHtml(image.fileName)}"/><div><button data-action="zoom-out" ${this.detailZoom <= 0.5 ? "disabled" : ""}>− Zoom</button><span>${Math.round(this.detailZoom * 100)}%</span><button data-action="zoom-in" ${this.detailZoom >= 2 ? "disabled" : ""}>+ Zoom</button></div></div><div class="detail-metrics"><h3>Technical signals</h3><dl><dt>Dimensions</dt><dd>${image.width}×${image.height}</dd><dt>Aspect ratio</dt><dd>${image.aspectRatio.toFixed(4)} · ${image.specStatus ?? "Pending"}</dd><dt>File size</dt><dd>${formatBytes(image.sizeBytes)}</dd><dt>Blur score</dt><dd>${image.blurScore.toFixed(2)}</dd><dt>Brightness</dt><dd>${image.brightnessMean.toFixed(2)} ± ${image.brightnessStdDev.toFixed(2)}</dd><dt>Contrast</dt><dd>${image.contrastScore.toFixed(2)}</dd><dt>Warnings</dt><dd>${image.qualityFlags.join(", ") || "No review suggestions"}</dd></dl><p class="privacy">${this.text().heuristic}</p><div class="choices"><button data-action="status" data-id="${image.id}" data-status="keep" aria-pressed="${image.selectionStatus === "keep"}">Keep</button><button data-action="status" data-id="${image.id}" data-status="maybe" aria-pressed="${image.selectionStatus === "maybe"}">Maybe</button><button data-action="status" data-id="${image.id}" data-status="reject" aria-pressed="${image.selectionStatus === "reject"}">Reject</button></div></div></div>${related.length > 1 ? `<section class="detail-related"><h3>Same duplicate group</h3>${related.map((candidate) => `<button data-action="detail" data-id="${candidate.id}"><img src="${candidate.objectUrl}" alt="Open ${escapeHtml(candidate.fileName)}"/><span>${escapeHtml(candidate.fileName)}</span></button>`).join("")}</section>` : ""}</article></section>`;
   }
   private groupsHtml(): string {
     const groups = new Map<string, Screenshot[]>();
@@ -185,6 +199,9 @@ export class PromoSiftApp {
     this.root
       .querySelectorAll<HTMLElement>("[data-action]")
       .forEach((element) => (element.onclick = () => void this.action(element)));
+    this.root.querySelectorAll<HTMLElement>('[data-action="detail"]').forEach((element) => {
+      element.onclick = () => this.showDetail(element.dataset.id!);
+    });
     this.root.ondragover = (e) => e.preventDefault();
     this.root.ondrop = (e) => {
       e.preventDefault();
@@ -236,6 +253,16 @@ export class PromoSiftApp {
           : image.selectionStatus,
         shortlistOrder: suggestions.findIndex((x) => x.id === image.id) + 1 || image.shortlistOrder
       }));
+      this.render();
+    } else if (action === "detail-close") {
+      this.detailId = undefined;
+      this.detailZoom = 1;
+      this.render();
+    } else if (action === "zoom-in") {
+      this.detailZoom = Math.min(2, this.detailZoom + 0.25);
+      this.render();
+    } else if (action === "zoom-out") {
+      this.detailZoom = Math.max(0.5, this.detailZoom - 0.25);
       this.render();
     } else if (action === "status" && id)
       this.setStatus(id, element.dataset.status as Screenshot["selectionStatus"]);
@@ -408,10 +435,16 @@ export class PromoSiftApp {
     this.render();
   }
   private showDetail(id: string): void {
-    const image = this.images.find((i) => i.id === id)!;
-    window.alert(
-      `${image.fileName}\n${image.width}×${image.height}\nBlur score: ${image.blurScore.toFixed(2)}\nBrightness: ${image.brightnessMean.toFixed(2)}\nContrast: ${image.contrastScore.toFixed(2)}\nFlags: ${image.qualityFlags.join(", ") || "None"}\n${this.text().heuristic}`
-    );
+    this.detailId = id;
+    this.detailZoom = 1;
+    this.render();
+    if (!this.root.querySelector(".detail-panel")) {
+      const image = this.images.find((candidate) => candidate.id === id);
+      if (image) {
+        this.root.querySelector("main")!.insertAdjacentHTML("beforeend", this.detailHtml(image));
+        this.bind();
+      }
+    }
   }
   private reset(): void {
     this.images.forEach((i) => URL.revokeObjectURL(i.objectUrl));

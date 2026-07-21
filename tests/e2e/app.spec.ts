@@ -17,6 +17,13 @@ test("keeps the full local workflow private and exports a ZIP", async ({ page })
     ]);
   await expect(page.locator(".stats")).toContainText("2");
   await expect(page.locator(".stats")).toContainText("2/2");
+  await page.locator(".image-button").first().click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByText("Technical signals")).toBeVisible();
+  await page.getByRole("button", { name: "+ Zoom" }).click();
+  await expect(page.getByText("125%")).toBeVisible();
+  await page.getByRole("button", { name: "Close image detail" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.selectOption("#filter", "flags");
   await expect(page.locator(".card")).toHaveCount(1);
   await page.selectOption("#filter", "all");

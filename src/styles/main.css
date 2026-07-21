@@ -364,3 +364,99 @@ nav a {
     margin-left: 0;
   }
 }
+
+.detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: #05060bbb;
+}
+.detail-panel {
+  width: min(1040px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  background: var(--surface);
+  box-shadow: 0 1.5rem 5rem #0008;
+}
+.detail-panel header {
+  height: auto;
+  border: 0;
+}
+.detail-panel h2 {
+  margin: 0.1rem 0;
+  overflow-wrap: anywhere;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+  gap: 1rem;
+}
+.detail-preview {
+  min-height: 360px;
+  overflow: auto;
+  background: #06070b;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.7rem;
+}
+.detail-preview img {
+  max-width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  transition: transform 0.15s ease;
+}
+.detail-preview > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.detail-metrics dl {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 0.45rem 0.8rem;
+  margin: 0;
+}
+.detail-metrics dt {
+  color: var(--muted);
+}
+.detail-metrics dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.detail-related {
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 0.8rem;
+}
+.detail-related button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.2rem;
+}
+.detail-related img {
+  width: 48px;
+  height: 32px;
+  object-fit: cover;
+}
+.detail-related span {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .detail-preview {
+    min-height: 220px;
+  }
+}

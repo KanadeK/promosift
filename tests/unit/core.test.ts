@@ -5,12 +5,26 @@ import { measurePixels } from "../../src/core/quality-metrics";
 import { histogramDistance } from "../../src/core/diversity";
 import { csvEscape } from "../../src/export/csv-exporter";
 import { safeName } from "../../src/export/zip-exporter";
+import { buildProject } from "../../src/export/project-exporter";
+import type { Screenshot } from "../../src/core/types";
 
 describe("technical analysis primitives", () => {
   it("evaluates Steam dimensions and ratio", () => {
     expect(evaluatePreset(1920, 1080, PRESETS[0])).toBe("PASS");
     expect(evaluatePreset(1280, 720, PRESETS[0])).toBe("FAIL");
     expect(evaluatePreset(1600, 1200, PRESETS[0])).toBe("FAIL");
+  });
+  it("evaluates a configurable Custom preset", () => {
+    const custom = {
+      ...PRESETS.find((preset) => preset.id === "custom")!,
+      targetWidth: 3,
+      targetHeight: 2,
+      minimumWidth: 1200,
+      minimumHeight: 800,
+      aspectTolerance: 0.01
+    };
+    expect(evaluatePreset(1500, 1000, custom)).toBe("PASS");
+    expect(evaluatePreset(1200, 900, custom)).toBe("FAIL");
   });
   it("builds a 64-bit dHash and measures Hamming distance", () => {
     const pixels = new Uint8ClampedArray(72).map((_, i) => i);
@@ -33,5 +47,36 @@ describe("technical analysis primitives", () => {
   it("escapes CSV and sanitizes output names", () => {
     expect(csvEscape('a,"b"')).toBe('"a,""b"""');
     expect(safeName("bad:name?.png")).toBe("bad_name_.png");
+  });
+  it("exports a project record without image bytes or device paths", () => {
+    const image = {
+      id: "x",
+      file: new File(["secret"], "sample.png"),
+      fileName: "sample.png",
+      mimeType: "image/png",
+      sizeBytes: 6,
+      width: 1,
+      height: 1,
+      aspectRatio: 1,
+      objectUrl: "blob:private",
+      importSource: "picker",
+      analysisStatus: "done",
+      contentHash: "abc",
+      brightnessMean: 0,
+      brightnessStdDev: 0,
+      darkPixelRatio: 0,
+      brightPixelRatio: 0,
+      contrastScore: 0,
+      blurScore: 0,
+      colorVariation: 0,
+      histogram: [],
+      dHash: "0",
+      qualityFlags: [],
+      selectionStatus: "keep"
+    } satisfies Screenshot;
+    const result = buildProject([image], PRESETS[0]);
+    expect(result).toContain("contentHash");
+    expect(result).not.toContain("blob:private");
+    expect(result).not.toContain("secret");
   });
 });

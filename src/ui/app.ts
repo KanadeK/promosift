@@ -1,7 +1,7 @@
 import { applyAnalysis } from "../core/analyzer";
 import { averageDiversity, suggestShortlist } from "../core/diversity";
 import { LIMITS, validateAndCreate } from "../core/image-loader";
-import { PRESETS } from "../core/presets";
+import { evaluatePreset, PRESETS } from "../core/presets";
 import type { ImportSource, Preset, Screenshot, WorkerOutput } from "../core/types";
 import { buildCsv } from "../export/csv-exporter";
 import { createContactSheet } from "../export/contact-sheet";
@@ -11,6 +11,15 @@ import { en } from "../i18n/en";
 import { zhCN } from "../i18n/zh-CN";
 
 type Language = "en" | "zh";
+interface PromoSiftProject {
+  version: number;
+  preset?: Preset;
+  images: Array<{
+    contentHash: string;
+    selectionStatus?: Screenshot["selectionStatus"];
+    shortlistOrder?: number;
+  }>;
+}
 const sampleFiles = [
   "clear-1920x1080.png",
   "clear-2560x1440.png",
@@ -43,6 +52,14 @@ export class PromoSiftApp {
   private queue: string[] = [];
   private cancelled = false;
   private errors: string[] = [];
+  private pendingProject?: {
+    preset?: Preset;
+    images: Array<{
+      contentHash: string;
+      selectionStatus?: Screenshot["selectionStatus"];
+      shortlistOrder?: number;
+    }>;
+  };
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -74,6 +91,18 @@ export class PromoSiftApp {
               : image.selectionStatus === this.filter)
       );
     this.root.innerHTML = `<main class="shell"><header><a class="brand" href="#top" aria-label="PromoSift home"><span>⌁</span>PromoSift</a><nav><a href="https://github.com/KanadeK/promosift" target="_blank" rel="noreferrer">GitHub</a><button data-action="language">${this.language === "en" ? "中文" : "English"}</button><button data-action="theme">Theme</button><button data-action="reset">Reset</button></nav></header><section id="top" class="hero"><p class="eyebrow">LOCAL-FIRST SCREENSHOT CURATION</p><h1>Curate the evidence.<br/><em>Keep the original.</em></h1><p>${t.tagline}</p><p class="privacy">${t.privacy}<br/>${t.heuristic}</p></section><section class="import-card"><div><h2>Import screenshots</h2><p>PNG, JPEG, WebP · up to ${LIMITS.count} files · 50 MB each</p><input id="files" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden/><input id="folder" type="file" accept="image/png,image/jpeg,image/webp" webkitdirectory multiple hidden/><button class="primary" data-action="files">Choose files</button><button data-action="folder">Choose folder</button><button data-action="samples">Load sample pack</button><p class="drop" tabindex="0">Drop files or folders here · or paste images from clipboard</p></div><div class="stats"><strong>${this.images.length}</strong><span>images</span><strong>${done}/${this.images.length}</strong><span>analyzed</span><strong>${this.shortlist.length}/${this.target}</strong><span>shortlist</span></div></section>${this.errors.length ? `<aside class="errors" role="alert">${this.errors.map((e) => `<p>${escapeHtml(e)}</p>`).join("")}</aside>` : ""}<section class="toolbar"><label>Preset <select id="preset">${PRESETS.map((p) => `<option value="${p.id}" ${p.id === this.preset.id ? "selected" : ""}>${p.name}</option>`).join("")}</select></label><label>View <select id="filter"><option value="all">All</option><option value="flags">Review suggested</option><option value="duplicates">Duplicates</option><option value="keep">Keep</option><option value="maybe">Maybe</option><option value="reject">Reject</option></select></label><button data-action="cancel" ${this.queue.length ? "" : "disabled"}>Cancel analysis</button><button data-action="suggest" ${this.images.length ? "" : "disabled"}>Suggested shortlist</button><button data-action="export" ${this.shortlist.length ? "" : "disabled"}>Export ZIP</button></section><section class="gallery" aria-live="polite">${shown.length ? shown.map((image) => this.card(image)).join("") : `<div class="empty">Import a local folder, choose files, drag-and-drop, or paste image data to start.</div>`}</section><section class="lower"><article class="panel"><h2>Duplicate groups</h2>${this.groupsHtml()}</article><article class="panel"><h2>Shortlist board <small>${this.shortlist.length}/${this.target}</small></h2><label>Target <select id="target">${[5, 6, 8, 10].map((n) => `<option ${n === this.target ? "selected" : ""}>${n}</option>`).join("")}</select></label><p>${averageDiversity(this.shortlist) < 0.22 && this.shortlist.length > 1 ? "Low visual diversity — many selected screenshots look visually similar." : "Visual diversity looks balanced for the current selection."}</p><ol class="shortlist">${this.shortlist.map((image, index) => `<li draggable="true" data-drag="${image.id}"><img src="${image.objectUrl}" alt="${escapeHtml(image.fileName)}"/><span>${index + 1}. ${escapeHtml(image.fileName)}</span><button data-action="remove" data-id="${image.id}">Remove</button></li>`).join("") || "<li>Mark images Keep to build a manual shortlist.</li>"}</ol><button data-action="contact" ${this.shortlist.length ? "" : "disabled"}>Download contact sheet</button><button data-action="csv" ${this.images.length ? "" : "disabled"}>Download report CSV</button><button data-action="project" ${this.images.length ? "" : "disabled"}>Export project JSON</button></article></section><section class="notes"><h2>How the signals work</h2><p>Technical checks flag resolution, aspect ratio, blur-like Laplacian variance, exposure, contrast, near-blank frames, dHash duplicate similarity, and simple color-histogram diversity. Dark scenes, pixel art, and minimal compositions can be correctly chosen despite a review suggestion. Always review results manually before publishing.</p></section></main>`;
+    const importPanel = this.root.querySelector(".import-card > div")!;
+    importPanel.insertAdjacentHTML(
+      "beforeend",
+      '<input id="project-file" type="file" accept="application/json,.json" hidden/><button data-action="project-import">Import project</button>'
+    );
+    if (this.preset.id === "custom")
+      this.root
+        .querySelector(".toolbar")!
+        .insertAdjacentHTML(
+          "afterbegin",
+          `<fieldset class="custom-preset"><legend>Custom requirements</legend>${(["targetWidth", "targetHeight", "minimumWidth", "minimumHeight", "aspectTolerance"] as const).map((field) => `<label>${field} <input data-custom="${field}" type="number" min="0" step="0.001" value="${this.preset[field]}"/></label>`).join("")}</fieldset>`
+        );
     this.bind();
   }
 
@@ -105,19 +134,25 @@ export class PromoSiftApp {
     this.root.querySelector<HTMLInputElement>("#files")!.onchange = (e) =>
       void this.importFiles((e.target as HTMLInputElement).files, "picker");
     this.root.querySelector<HTMLInputElement>("#folder")!.onchange = (e) =>
-      void this.importFiles((e.target as HTMLInputElement).files, "folder");
+      void this.importFolder((e.target as HTMLInputElement).files);
+    this.root.querySelector<HTMLInputElement>("#project-file")!.onchange = (e) =>
+      void this.loadProject((e.target as HTMLInputElement).files?.[0]);
     this.root.querySelector<HTMLSelectElement>("#preset")!.onchange = (e) => {
       this.preset = PRESETS.find((p) => p.id === (e.target as HTMLSelectElement).value)!;
-      this.images = this.images.map((i) => ({
-        ...i,
-        specStatus: i.width
-          ? i.width / i.height === this.preset.targetWidth / this.preset.targetHeight
-            ? "PASS"
-            : "WARNING"
-          : undefined
-      }));
+      this.recheckPreset();
       this.render();
     };
+    this.root.querySelectorAll<HTMLInputElement>("[data-custom]").forEach((input) => {
+      input.onchange = () => {
+        const key = input.dataset.custom as keyof Pick<
+          Preset,
+          "targetWidth" | "targetHeight" | "minimumWidth" | "minimumHeight" | "aspectTolerance"
+        >;
+        this.preset = { ...this.preset, [key]: Number(input.value) };
+        this.recheckPreset();
+        this.render();
+      };
+    });
     this.root.querySelector<HTMLSelectElement>("#filter")!.value = this.filter;
     this.root.querySelector<HTMLSelectElement>("#filter")!.onchange = (e) => {
       this.filter = (e.target as HTMLSelectElement).value;
@@ -133,7 +168,7 @@ export class PromoSiftApp {
     this.root.ondragover = (e) => e.preventDefault();
     this.root.ondrop = (e) => {
       e.preventDefault();
-      void this.importFiles(e.dataTransfer?.files ?? null, "drop");
+      void this.importDropped(e.dataTransfer);
     };
     this.root.onpaste = (e) => {
       const files = [...(e.clipboardData?.files ?? [])];
@@ -156,6 +191,8 @@ export class PromoSiftApp {
       id = element.dataset.id;
     if (action === "files") this.root.querySelector<HTMLInputElement>("#files")!.click();
     else if (action === "folder") this.root.querySelector<HTMLInputElement>("#folder")!.click();
+    else if (action === "project-import")
+      this.root.querySelector<HTMLInputElement>("#project-file")!.click();
     else if (action === "samples") await this.loadSamples();
     else if (action === "language") {
       this.language = this.language === "en" ? "zh" : "en";
@@ -231,6 +268,58 @@ export class PromoSiftApp {
     this.cancelled = false;
     this.render();
     this.analyzeNext();
+  }
+  private async importFolder(files: FileList | null): Promise<void> {
+    await this.importFiles(files, "folder");
+    this.restoreProjectSelections();
+  }
+  private async importDropped(transfer: DataTransfer | null): Promise<void> {
+    if (!transfer) return;
+    const files = await filesFromDrop(transfer);
+    await this.importFiles(toFileList(files), "drop");
+  }
+  private async loadProject(file: File | undefined): Promise<void> {
+    if (!file) return;
+    try {
+      const candidate = JSON.parse(await file.text()) as PromoSiftProject;
+      if (candidate.version !== 1 || !Array.isArray(candidate.images))
+        throw new Error("This is not a PromoSift project file.");
+      this.pendingProject = { preset: candidate.preset, images: candidate.images };
+      if (candidate.preset) this.preset = candidate.preset;
+      this.errors = [
+        "Project loaded. Choose the original image folder so PromoSift can match files by hash."
+      ];
+      this.render();
+    } catch (error) {
+      this.errors = [error instanceof Error ? error.message : "Could not read project file."];
+      this.render();
+    }
+  }
+  private restoreProjectSelections(): void {
+    if (!this.pendingProject) return;
+    const saved = new Map(this.pendingProject.images.map((image) => [image.contentHash, image]));
+    let matched = 0;
+    this.images = this.images.map((image) => {
+      const previous = saved.get(image.contentHash);
+      if (!previous) return image;
+      matched += 1;
+      return {
+        ...image,
+        selectionStatus: previous.selectionStatus ?? "unreviewed",
+        shortlistOrder: previous.shortlistOrder
+      };
+    });
+    this.errors.push(
+      `Restored ${matched} of ${this.pendingProject.images.length} project records by content hash.`
+    );
+    this.pendingProject = undefined;
+    this.reorder();
+  }
+  private recheckPreset(): void {
+    this.images = this.images.map((image) => ({
+      ...image,
+      specStatus: image.width ? evaluatePreset(image.width, image.height, this.preset) : undefined
+    }));
   }
   private analyzeNext(): void {
     if (this.cancelled || !this.queue.length) return;
@@ -342,4 +431,40 @@ function toFileList(files: File[]): FileList {
   const transfer = new DataTransfer();
   files.forEach((file) => transfer.items.add(file));
   return transfer.files;
+}
+
+async function filesFromDrop(transfer: DataTransfer): Promise<File[]> {
+  const entries = [...transfer.items]
+    .map((item) =>
+      (
+        item as DataTransferItem & { webkitGetAsEntry?: () => FileSystemEntry | null }
+      ).webkitGetAsEntry?.()
+    )
+    .filter((entry): entry is FileSystemEntry => Boolean(entry));
+  if (!entries.length) return [...transfer.files];
+  return (await Promise.all(entries.map(readEntry))).flat();
+}
+function readEntry(entry: FileSystemEntry): Promise<File[]> {
+  if (entry.isFile)
+    return new Promise((resolve) =>
+      (entry as FileSystemFileEntry).file(
+        (file) => resolve([file]),
+        () => resolve([])
+      )
+    );
+  const directory = entry as FileSystemDirectoryEntry;
+  return new Promise((resolve) => {
+    const reader = directory.createReader(),
+      files: File[] = [];
+    const read = () =>
+      reader.readEntries(
+        async (entries) => {
+          if (!entries.length) return resolve(files);
+          files.push(...(await Promise.all(entries.map(readEntry))).flat());
+          read();
+        },
+        () => resolve(files)
+      );
+    read();
+  });
 }

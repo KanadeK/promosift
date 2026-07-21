@@ -27,6 +27,15 @@ export const PRESETS: Preset[] = [
     minimumWidth: 0,
     minimumHeight: 0,
     aspectTolerance: 0.02
+  },
+  {
+    id: "custom",
+    name: "Custom",
+    targetWidth: 16,
+    targetHeight: 9,
+    minimumWidth: 0,
+    minimumHeight: 0,
+    aspectTolerance: 0.02
   }
 ];
 

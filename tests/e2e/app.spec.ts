@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import JSZip from "jszip";
 
 test("keeps the full local workflow private and exports a ZIP", async ({ page }, testInfo) => {
   const externalRequests: string[] = [];
@@ -35,7 +37,19 @@ test("keeps the full local workflow private and exports a ZIP", async ({ page },
   await expect(page.getByText(/Shortlist board/)).toContainText("1/");
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export ZIP" }).click();
-  expect((await download).suggestedFilename()).toBe("promosift-selection.zip");
+  const zipDownload = await download;
+  expect(zipDownload.suggestedFilename()).toBe("promosift-selection.zip");
+  const zipPath = testInfo.outputPath("promosift-selection.zip");
+  await zipDownload.saveAs(zipPath);
+  const zip = await JSZip.loadAsync(await readFile(zipPath));
+  expect(Object.keys(zip.files)).toEqual(
+    expect.arrayContaining(["selected/", "contact-sheet.png", "selection.json", "report.csv"])
+  );
+  expect(await zip.file("selected/01-clear-1920x1080.png")!.async("nodebuffer")).toEqual(
+    await readFile("tests/fixtures/clear-1920x1080.png")
+  );
+  expect(await zip.file("report.csv")!.async("string")).toContain("file_name,width,height");
+  expect(await zip.file("selection.json")!.async("string")).not.toContain("data:image");
   const projectDownload = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export project JSON" }).click();
   const projectPath = testInfo.outputPath("promosift-project.json");

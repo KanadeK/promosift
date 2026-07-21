@@ -7,6 +7,14 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const out = join(root, "public", "samples");
 const testOut = join(root, "tests", "fixtures");
 const projectFolder = join(testOut, "project-recovery");
+const formatSmokeJpeg = Buffer.from(
+  "/9j/4AAQSkZJRgABAgAAAQABAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABLAAEBAAAAAAAAAAAAAAAAAAAAAwEBAAAAAAAAAAAAAAAAAAAABhABAAAAAAAAAAAAAAAAAAAAABEBAAAAAAAAAAAAAAAAAAAAAP/AABEIAAkAEAMBIgACEQADEQD/2gAMAwEAAhEDEQA/AKgGgo//2Q==",
+  "base64"
+);
+const formatSmokeWebp = Buffer.from(
+  "UklGRjYAAABXRUJQVlA4ICoAAADwAQCdASoQAAkAAgA0JaACdLoB+AAF9AAA2m/8zRMcx+1f/5BcsLriMAA=",
+  "base64"
+);
 type Kind = "clear" | "blur" | "dark" | "bright" | "low" | "black" | "white" | "pixel" | "night";
 const manifest: [string, number, number, Kind][] = [
   ["clear-1920x1080.png", 1920, 1080, "clear"],
@@ -120,6 +128,8 @@ for (const [name, width, height, kind] of manifest) {
 }
 await writeFile(join(out, "this-is-not-an-image.png"), "not an image");
 await writeFile(join(out, "extension-mismatch.jpg"), png(64, 64, "clear"));
+await writeFile(join(out, "format-smoke.jpg"), formatSmokeJpeg);
+await writeFile(join(out, "format-smoke.webp"), formatSmokeWebp);
 for (const name of [
   "clear-1920x1080.png",
   "small-1280x720.png",
@@ -130,6 +140,8 @@ for (const name of [
   "near-duplicate-a.png",
   "near-duplicate-b.png"
 ])
+  await copyFile(join(out, name), join(testOut, name));
+for (const name of ["format-smoke.jpg", "format-smoke.webp"])
   await copyFile(join(out, name), join(testOut, name));
 for (const name of ["clear-1920x1080.png", "black-frame.png"])
   await copyFile(join(out, name), join(projectFolder, name));

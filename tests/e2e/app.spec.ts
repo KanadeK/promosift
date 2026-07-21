@@ -2,6 +2,40 @@ import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import JSZip from "jszip";
 
+test("imports PNG, JPEG, and WebP locally", async ({ page }) => {
+  await page.goto("/");
+  await page
+    .locator("#files")
+    .setInputFiles([
+      "tests/fixtures/clear-1920x1080.png",
+      "tests/fixtures/format-smoke.jpg",
+      "tests/fixtures/format-smoke.webp"
+    ]);
+  await expect(page.locator(".card")).toHaveCount(3);
+  await expect(page.locator(".stats")).toContainText("3/3");
+});
+
+test("reports invalid image content instead of importing it", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#files").setInputFiles("public/samples/extension-mismatch.jpg");
+  await expect(page.getByRole("alert")).toContainText("file content does not match its image type");
+  await expect(page.locator(".card")).toHaveCount(0);
+});
+
+test("shows visual duplicate groups and keeps only the chosen candidate", async ({ page }) => {
+  await page.goto("/");
+  await page
+    .locator("#files")
+    .setInputFiles(["tests/fixtures/near-duplicate-a.png", "tests/fixtures/near-duplicate-b.png"]);
+  await expect(page.locator(".stats")).toContainText("2/2");
+  const group = page.locator(".group");
+  await expect(group).toContainText("near-duplicate-a.png");
+  await expect(group).toContainText("near-duplicate-b.png");
+  await expect(group).toContainText(/VISUAL_(NEAR_DUPLICATE|SIMILAR)/);
+  await group.getByRole("button").first().click();
+  await expect(page.getByText(/Shortlist board/)).toContainText("1/");
+});
+
 test("keeps the full local workflow private and exports a ZIP", async ({ page }, testInfo) => {
   const externalRequests: string[] = [];
   page.on("request", (request) => {
@@ -19,6 +53,7 @@ test("keeps the full local workflow private and exports a ZIP", async ({ page },
     ]);
   await expect(page.locator(".stats")).toContainText("2");
   await expect(page.locator(".stats")).toContainText("2/2");
+  await expect(page.getByRole("alert")).toContainText("exact-duplicate-a.png: already imported.");
   await page.selectOption("#target", "custom");
   await page.locator("#custom-target").fill("7");
   await page.locator("#custom-target").press("Tab");
